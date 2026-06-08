@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>สถานะ DISPERSION</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#f8fafc;--bg2:#ffffff;--bg3:#f1f5f9;
+    --accent:#0a9e84;--accent2:#0284c7;--warn:#d97706;--pass:#059669;
+    --text:#1e293b;--text2:#475569;--text3:#94a3b8;
+    --border:rgba(0,0,0,0.08);--border2:rgba(10,158,132,0.3);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:'Sarabun',sans-serif;min-height:100vh;overflow:hidden;}
+  body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(10,158,132,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(10,158,132,0.04) 1px,transparent 1px);background-size:48px 48px;pointer-events:none;z-index:0;}
+  .container{position:relative;z-index:1;display:flex;flex-direction:column;height:100vh;padding:24px 32px 16px;gap:16px;}
+  .header{display:flex;align-items:center;justify-content:space-between;padding-bottom:12px;border-bottom:1px solid var(--border2);}
+  .header-left{display:flex;align-items:center;gap:16px;}
+  .hospital-icon{width:60px;height:60px;background:linear-gradient(135deg,#00c9a7,#0ea5e9);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:32px;}
+  .header-title{font-size:28px;font-weight:700;letter-spacing:-0.3px;}
+  .header-sub{font-size:22px;color:var(--text2);margin-top:2px;}
+  .clock{font-family:'IBM Plex Mono',monospace;font-size:30px;font-weight:600;}
+  .date-text{font-size:22px;color:var(--text2);text-align:right;}
+  .stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;}
+  .stat-card{background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:14px 20px;display:flex;align-items:center;gap:14px;box-shadow:0 1px 4px rgba(0,0,0,0.06);}
+  .stat-label{font-size:20px;color:var(--text2);}
+  .stat-value{font-size:36px;font-weight:700;font-family:'IBM Plex Mono',monospace;}
+  .stat-value.blue{color:var(--accent2);}
+  .stat-value.green{color:var(--pass);}
+  .stat-value.amber{color:var(--warn);}
+  .stat-value.teal{color:var(--accent);font-size:28px;}
+  
+  /* ปรับปรุงตารางให้ขนาดแถวคงที่เพื่อไม่ให้จอกระตุกเวลาสลับหน้า */
+  .table-wrap{flex:1;background:var(--bg2);border:1px solid var(--border);border-radius:16px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 1px 6px rgba(0,0,0,0.07);}
+  table{width:100%;border-collapse:collapse;table-layout:fixed;}
+  thead tr{background:var(--bg3);border-bottom:1px solid var(--border2);}
+  th{font-size:34px;font-weight:600;color:var(--accent);padding:16px 20px;text-align:left;}
+  td{padding:18px 20px;font-size:32px;color:var(--text);border-bottom:1px solid var(--border);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .c{text-align:center;}
+  .mono{font-family:'IBM Plex Mono',monospace;font-size:32px;}
+  
+  /* ปรับแต่ง Badge สถานะให้ชัดเจนและใหญ่เต็มตา */
+  .bp{background:rgba(5,150,105,0.1);border:1px solid rgba(5,150,105,0.35);color:#059669;padding:8px 26px;border-radius:100px;font-size:32px;font-weight:600;display:inline-block;}
+  .bw{background:rgba(217,119,6,0.1);border:1px solid rgba(217,119,6,0.35);color:#d97706;padding:8px 26px;border-radius:100px;font-size:32px;font-weight:600;display:inline-block;}
+  .state-msg{padding:48px;text-align:center;color:var(--text2);font-size:30px;}
+  
+  /* แถบแจ้งเตือนการสลับหน้า (Pagination Badge) */
+  .page-indicator{background:rgba(2,132,199,0.08);border:1px solid rgba(2,132,199,0.25);color:var(--accent2);padding:6px 16px;border-radius:6px;font-family:'IBM Plex Mono',monospace;font-size:26px;font-weight:600;}
+  .footer{display:flex;align-items:center;justify-content:space-between;padding-top:10px;border-top:1px solid var(--border);}
+  .footer-left{font-size:26px;color:var(--text3);}
+  .footer-right{font-size:26px;color:var(--text3);display:flex;align-items:center;gap:12px;}
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <div class="header-left">
+      <div class="hospital-icon">📊</div>
+      <div>
+        <div class="header-title">สถานะ DISPERSION</div>
+        <div class="header-sub">ระบบดึงข้อมูลอัตโนมัติจาก Google Sheets</div>
+      </div>
+    </div>
+    <div style="text-align:right;">
+      <div class="clock" id="clock">00:00:00</div>
+      <div class="date-text" id="date-text"></div>
+    </div>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat-card"><div><div class="stat-label">รายการทั้งหมด</div><div class="stat-value blue" id="s-total">—</div></div></div>
+    <div class="stat-card"><div><div class="stat-label">ผ่านแล้ว</div><div class="stat-value green" id="s-pass">—</div></div></div>
+    <div class="stat-card"><div><div class="stat-label">แจ้งแก้ไข/รอ</div><div class="stat-value amber" id="s-wait">—</div></div></div>
+    <div class="stat-card"><div><div class="stat-label">อัปเดตล่าสุด</div><div class="stat-value teal" id="s-time">—</div></div></div>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th style="width: 25%;">คิว / กลุ่ม</th>
+          <th style="width: 20%;" class="c">วันที่ส่งเช็ค</th>
+          <th style="width: 20%;" class="c">วันที่เปลี่ยนสถานะ</th>
+          <th style="width: 15%;" class="c">เวลา</th>
+          <th style="width: 20%;" class="c">สถานะ</th>
+        </tr>
+      </thead>
+      <tbody id="tbody">
+        <tr><td colspan="5" class="state-msg">⏳ กำลังเชื่อมต่อข้อมูลระบบเรียลไทม์...</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="footer">
+    <div class="footer-left">ระบบสลับแสดงผลอัตโนมัติ (รอบละ 3 ลำดับ)</div>
+    <div class="footer-right">
+      <span class="page-indicator" id="page-view">หน้า — / —</span>
+      <span id="status-text">กำลังโหลดข้อมูล...</span>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ⚠️ เปลี่ยนลิงก์ Web App URL ของคุณตรงนี้ (ใช้ลิงก์เดิมที่คุณ Deploy สำเร็จแล้วได้เลยครับ)
+const URL = 'https://script.google.com/macros/s/AKfycbxlU0SWchNqXPdtnXAcU8W6Ot0TIJhZ6W9Yw1itezrypMe3CAcw7PiF99Ckt3IDtc3n/exec'; 
+
+const API_REFRESH_TIME = 30000; // ดึงข้อมูลใหม่จากคลาวด์ทุก ๆ 30 วินาที
+const PAGE_ROTATION_TIME = 180000; // สลับหน้าจออัตโนมัติทุก ๆ 180 วินาที (ปรับเปลี่ยนเวลาได้ตรงนี้ หน่วยเป็นวินาที) // สลับหน้าจออัตโนมัติทุก ๆ 120 วินาที (ปรับเปลี่ยนเวลาได้ตรงนี้ หน่วยเป็นวินาที)
+const ROWS_PER_PAGE = 3;        // จำนวนคิวที่จะโชว์ต่อ 1 หน้าจอ
+
+let allCachedRows = []; // ตัวแปรเก็บข้อมูลคิวทั้งหมด
+let currentPageIdx = 0; // ลำดับหน้าปัจจุบัน
+
+// ฟังก์ชันนาฬิกา Realtime
+function tick() {
+  const n = new Date();
+  const pad = x => String(x).padStart(2,'0');
+  document.getElementById('clock').textContent = pad(n.getHours())+':'+pad(n.getMinutes())+':'+pad(n.getSeconds());
+  document.getElementById('date-text').textContent = n.toLocaleDateString('th-TH', {day:'numeric', month:'short', year:'numeric'});
+}
+setInterval(tick, 1000); tick();
+
+// ฟังก์ชันสำหรับแปลงและแกะรูปแบบวันที่ (รองรับทั้ง Serial และข้อความยาว ISO แบบในภาพของคุณ)
+function cleanDate(val) {
+  if (!val) return '—';
+  
+  // กรณีระบุมาเป็น ISO String ยาว ๆ เช่น 2026-05-21T17:00:00.000Z
+  if (typeof val === 'string' && val.includes('T')) {
+    const d = new Date(val);
+    if (!isNaN(d)) {
+      return String(d.getDate()).padStart(2,'0') + '/' + String(d.getMonth()+1).padStart(2,'0') + '/' + String(d.getFullYear()).slice(-2);
+    }
+  }
+  // กรณีมาเป็น Google Sheets Serial Number ตัวเลข
+  if (typeof val === 'number' && val > 20000) {
+    const d = new Date(Math.round((val - 25569) * 86400 * 1000));
+    return String(d.getDate()).padStart(2,'0') + '/' + String(d.getMonth()+1).padStart(2,'0') + '/' + String(d.getFullYear()).slice(-2);
+  }
+  return String(val);
+}
+
+// ฟังก์ชันจัดการเวลาให้สวยงาม
+function cleanTime(val) {
+  if (!val && val !== 0) return '—';
+  
+  if (typeof val === 'string' && val.includes('T')) {
+    const d = new Date(val);
+    if (!isNaN(d)) {
+      return String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+    }
+  }
+  if (typeof val === 'number') {
+    if (val < 1) { // Serial ทศนิยมเวลา
+      let totalSecs = Math.round(val * 86400);
+      return String(Math.floor(totalSecs / 3600)).padStart(2,'0') + ':' + String(Math.floor((totalSecs % 3600) / 60)).padStart(2,'0');
+    }
+  }
+  return String(val);
+}
+
+// ฟังก์ชันหลักดึงข้อมูลจาก Google Sheets
+async function fetchSheetData() {
+  try {
+    document.getElementById('status-text').textContent = 'กำลังอัปเดตข้อมูลจากคลาวด์...';
+    const res = await fetch(URL + '?_=' + Date.now());
+    const data = await res.json();
+    
+    if(!data || data.length <= 1) {
+      document.getElementById('tbody').innerHTML = '<tr><td colspan="5" class="state-msg">ไม่พบข้อมูลในสเปรดชีต</td></tr>';
+      return;
+    }
+
+    let tempRows = [];
+    let total = 0, pass = 0, wait = 0;
+
+    // อ่านข้อมูลทั้งหมดและคัดกรองเพื่อคำนวณสถิติ
+    for(let i = 1; i < data.length; i++) {
+      const row = data[i];
+      if(!row || row.length === 0) continue;
+
+      const c0 = row[0] !== undefined ? String(row[0]).trim() : '';
+      const c1 = row[1];
+      const c2 = row[2];
+      const c3 = row[3];
+      const c4 = row[4] !== undefined ? String(row[4]).trim() : '';
+
+      // ข้ามบรรทัดที่ไม่มีข้อมูลสำคัญ (คิว/กลุ่ม หรือ สถานะ ว่างเปล่า)
+      if(c0 === '' || c4 === '') continue;
+
+      total++;
+      const isPass = c4.includes('ผ่าน') || c4.toLowerCase().includes('pass') || c4.includes('✓');
+      if(isPass) pass++; else wait++;
+
+      tempRows.push({ c0, c1, c2, c3, c4, isPass });
+    }
+
+    // อัปเดตตรรกะตัวแปรและข้อมูลสถิติด้านบนทันที
+    allCachedRows = tempRows;
+    document.getElementById('s-total').textContent = total;
+    document.getElementById('s-pass').textContent = pass;
+    document.getElementById('s-wait').textContent = wait;
+    
+    const now = new Date();
+    document.getElementById('s-time').textContent = String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
+    document.getElementById('status-text').textContent = 'ซิงค์คลาวด์สำเร็จ';
+
+    // วาดตารางหน้าจอแรกทันทีที่โหลดเสร็จ
+    renderCurrentPage();
+
+  } catch(err) {
+    console.error(err);
+    document.getElementById('status-text').textContent = 'การซิงค์ข้อมูลติดขัด';
+  }
+}
+
+// ฟังก์ชันวาดตารางเฉพาะกลุ่มลำดับในหน้านั้น ๆ
+function renderCurrentPage() {
+  if (allCachedRows.length === 0) return;
+
+  const totalPages = Math.ceil(allCachedRows.length / ROWS_PER_PAGE);
+  
+  // ตรวจสอบความปลอดภัยของตำแหน่งหน้าปัจจุบัน เพื่อไม่ให้เกินจำนวนหน้าจริงที่มีอยู่
+  if (currentPageIdx >= totalPages) {
+    currentPageIdx = 0;
+  }
+
+  // คำนวณช่วงลำดับแถวที่จะเอามาวาดในหน้านี้
+  const startIdx = currentPageIdx * ROWS_PER_PAGE;
+  const endIdx = Math.min(startIdx + ROWS_PER_PAGE, allCachedRows.length);
+  
+  let html = '';
+
+  for (let i = startIdx; i < endIdx; i++) {
+    const item = allCachedRows[i];
+    const badge = item.isPass ? '<span class="bp">✓ ผ่าน</span>' : '<span class="bw">⏳ แจ้งแก้ไข</span>';
+
+    html += '<tr>'
+      +'<td><b>' + item.c0 + '</b></td>'
+      +'<td class="mono c">' + cleanDate(item.c1) + '</td>'
+      +'<td class="mono c">' + cleanDate(item.c2) + '</td>'
+      +'<td class="mono c">' + cleanTime(item.c3) + '</td>'
+      +'<td class="c">' + badge + '</td>'
+      +'</tr>';
+  }
+
+  // หยอดแถวตารางลงหน้าจอ
+  document.getElementById('tbody').innerHTML = html;
+  
+  // แสดงตัวเลขกำกับหน้า เช่น หน้า 1 / 5 ด้านขวาล่าง
+  document.getElementById('page-view').textContent = 'หน้า ' + (currentPageIdx + 1) + ' / ' + totalPages;
+}
+
+// ฟังก์ชันสำหรับกระโดดข้ามสลับหน้าไปรอบถัดไปอัตโนมัติ
+function rotatePage() {
+  if (allCachedRows.length === 0) return;
+  const totalPages = Math.ceil(allCachedRows.length / ROWS_PER_PAGE);
+  
+  currentPageIdx++;
+  if (currentPageIdx >= totalPages) {
+    currentPageIdx = 0; // วนลูปกลับไปเริ่มลำดับที่ 1-3 ใหม่เมื่อแสดงผลครบหน้าสุดท้ายแล้ว
+  }
+  renderCurrentPage();
+}
+
+// เริ่มต้นระบบทำงานครั้งแรก
+fetchSheetData();
+
+// ตั้งตัวจับเวลาการเปลี่ยนหน้าจอ และการดึงข้อมูลสเปรดชีตซ้ำ
+setInterval(fetchSheetData, API_REFRESH_TIME); // ดึงคลาวด์ทุกๆ 30 วินาที
+setInterval(rotatePage, PAGE_ROTATION_TIME);   // สลับหน้าจอวนลูปคิวอัตโนมัติทุกๆ 120 วินาที
+</script>
+</body>
+</html>
